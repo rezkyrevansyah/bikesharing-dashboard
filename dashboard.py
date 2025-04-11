@@ -58,15 +58,20 @@ with st.sidebar:
                  width=150)
     
     st.header("Filter Data")
-    
-    # Date range filter
-    start_date, end_date = st.date_input(
+
+    # Date range filter dengan validasi
+    date_range = st.date_input(
         label='Rentang Waktu',
         min_value=min_date,
         max_value=max_date,
         value=[min_date, max_date]
     )
-    
+
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start_date, end_date = date_range
+    else:
+        start_date, end_date = None, None
+
     # Additional filters
     selected_seasons = st.multiselect(
         "Pilih Musim",
@@ -83,6 +88,9 @@ with st.sidebar:
 # ====================
 # PROCESS DATA
 # ====================
+if not start_date or not end_date:
+    st.warning("Silahkan pilih rentang waktu terlebih dahulu.")
+    
 main_df = all_df[
     (all_df['dteday'].dt.date >= start_date) & 
     (all_df['dteday'].dt.date <= end_date) &
@@ -92,7 +100,7 @@ main_df = all_df[
 
 # Cek apakah main_df kosong
 if main_df.empty:
-    st.warning("Tidak ada data yang bisa kamu lihat, silahkan coba filter lainnya.")
+    st.warning("Tidak ada data yang bisa kamu lihat, silahkan pilih filter lainnya.")
 else:
     daily_summary = create_daily_summary(main_df)
     max_day = main_df.loc[main_df['cnt'].idxmax()]
@@ -106,6 +114,15 @@ else:
     Dashboard ini menampilkan analisis pola penyewaan sepeda berdasarkan berbagai faktor seperti musim, 
     cuaca, dan jenis hari. Gunakan filter di sidebar untuk menyesuaikan tampilan data.
     """)
+
+    # TAMBAHKAN: TAMPILKAN RENTANG WAKTU YANG DIPILIH
+    st.subheader(f"📅 Periode: {start_date.strftime('%d %B %Y')} - {end_date.strftime('%d %B %Y')}")
+    st.markdown(f"""
+    - **Total Hari**: {(end_date - start_date).days + 1} hari
+    - **Musim Terpilih**: {', '.join(selected_seasons)}
+    - **Jenis Hari Terpilih**: {', '.join(selected_day_types)}
+    """)
+    st.markdown("---")
 
     # SECTION 1: METRIC UTAMA
     st.header("📊 Ringkasan Utama")
@@ -146,10 +163,11 @@ else:
     # Highlight puncak tertinggi
     max_point = daily_summary.loc[daily_summary[('cnt', 'sum')].idxmax()]
     ax.annotate(f'Puncak: {max_point[("cnt", "sum")]:,}',
-                xy=(max_point['dteday'], max_point[('cnt', 'sum')]),
-                xytext=(max_point['dteday'], max_point[('cnt', 'sum')] + 500),
-                arrowprops=dict(facecolor=SECONDARY_COLOR, shrink=0.05),
-                ha='center')
+            xy=(max_point['dteday'], max_point[('cnt', 'sum')]),  # Titik yang ditandai
+            xytext=(max_point['dteday'] + pd.Timedelta(days=3), max_point[('cnt', 'sum')] + 10),  # Posisi teks (ditambah 3 hari ke kanan)
+            arrowprops=dict(facecolor=SECONDARY_COLOR, shrink=0.05),
+            ha='left',  # Align text ke kiri dari xytext
+            bbox=dict(boxstyle='round,pad=0.5', fc='white', alpha=0.8))
 
     st.pyplot(fig)
 
@@ -344,7 +362,7 @@ else:
         ax2.scatter(weekday_peak_data['hr'], weekday_peak_data['cnt'], color="#3498db", s=200, zorder=5, edgecolor='black')
         ax2.annotate(f'Puncak Weekday\nJam {int(weekday_peak_data["hr"])}:00\n{int(weekday_peak_data["cnt"])} penyewaan',
                       xy=(weekday_peak_data['hr'], weekday_peak_data['cnt']),
-                      xytext=(weekday_peak_data['hr'] + 1, weekday_peak_data['cnt'] + 50),
+                      xytext=(weekday_peak_data['hr'] + 1, weekday_peak_data['cnt'] - 6),
                       arrowprops=dict(facecolor='black', shrink=0.05),
                       bbox=dict(boxstyle='round,pad=0.5', fc='white', alpha=0.8))
 
@@ -383,23 +401,84 @@ else:
 
     # SECTION 6: REKOR PENYEWAAN
     st.header("🏆 Rekor Penyewaan")
+    
+    # Cari semua record dengan nilai minimum
+    min_value = main_df['cnt'].min()
+    min_records = main_df[main_df['cnt'] == min_value]
+    min_count = len(min_records)
+    
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Hari Terbaik")
+        st.subheader("Puncak Penyewaan Tertinggi")
         st.metric(
-            label=max_day['dteday'].strftime('%d %b %Y'),
+            label=f"{max_day['dteday'].strftime('%d %b %Y')} Jam {int(max_day['hr']):02d}:00",
             value=f"{max_day['cnt']:,} penyewaan",
-            help=f"Musim: {max_day['season_label']} | Jam puncak: {int(max_day['hr'])}:00 | Cuaca: {max_day['weather_label']}"
+            help=f"Musim: {max_day['season_label']} | Cuaca: {max_day['weather_label']} | Hari: {max_day['day_type']}"
         )
         
     with col2:
-        st.subheader("Hari Terburuk")
-        st.metric(
-            label=min_day['dteday'].strftime('%d %b %Y'),
-            value=f"{min_day['cnt']:,} penyewaan",
-            help=f"Musim: {min_day['season_label']} | Jam terendah: {int(min_day['hr'])}:00 | Cuaca: {min_day['weather_label']}"
-        )
+        st.subheader(f"Puncak Penyewaan Terendah ({min_value})")
+        if min_count == 1:
+            st.metric(
+                label=f"{min_day['dteday'].strftime('%d %b %Y')} Jam {int(min_day['hr']):02d}:00",
+                value=f"{min_value:,} penyewaan",
+                help=f"Musim: {min_day['season_label']} | Cuaca: {min_day['weather_label']} | Hari: {min_day['day_type']}"
+            )
+        else:
+            st.metric(
+                label=f"Terjadi di {min_count} waktu",
+                value=f"{min_value:,} penyewaan",
+                help=f"Lihat detail di bawah"
+            )
 
+    # Button detail waktu di bawah section dengan pagination
+    if min_count > 1:
+        with st.expander(f"📝 Detail {min_count} Waktu dengan Penyewaan Terendah", expanded=False):
+            # Konfigurasi pagination
+            items_per_page = 15  # 3 kolom x 5 baris
+            total_pages = (min_count + items_per_page - 1) // items_per_page
+            
+            # Buat pagination di bagian atas
+            if total_pages > 1:
+                page = st.number_input(
+                    "Halaman", 
+                    min_value=1, 
+                    max_value=total_pages, 
+                    value=1,
+                    key="pagination_page"
+                )
+                start_idx = (page - 1) * items_per_page
+                end_idx = start_idx + items_per_page
+                current_records = min_records.iloc[start_idx:end_idx]
+            else:
+                current_records = min_records
+            
+            # Tampilkan dalam grid 3 kolom dengan pengisian per baris
+            cols = st.columns(3)
+            records_list = list(current_records.iterrows())  # Konversi ke list untuk diiterasi
+            
+            # Hitung jumlah item per kolom
+            items_per_col = (len(records_list) + 2) // 3
+            
+            # Distribusi item ke kolom dengan pengisian per baris
+            for col_idx in range(3):
+                with cols[col_idx]:
+                    # Ambil item untuk kolom ini
+                    for row_idx in range(items_per_col):
+                        item_idx = row_idx * 3 + col_idx
+                        if item_idx < len(records_list):
+                            idx, row = records_list[item_idx]
+                            st.caption(
+                                f"**{row['dteday'].strftime('%d %b %Y')} {int(row['hr']):02d}:00**  \n"
+                                f"• {row['season_label']}  \n"
+                                f"• {row['weather_label']}  \n"
+                                f"• {row['day_type']}"
+                            )
+            
+            # Tampilkan info pagination
+            if total_pages > 1:
+                st.caption(f"Halaman {page} dari {total_pages} • Total {min_count} record")
+                
     # FOOTER
     st.markdown("---")
-    st.caption('© 2025 Bike Sharing Analytics | Dibuat dengan Streamlit')
+    st.caption('© 2025 Bike Sharing Analytics | Dibuat oleh Revan')
