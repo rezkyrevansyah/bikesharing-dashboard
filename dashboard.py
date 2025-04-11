@@ -4,6 +4,52 @@ import seaborn as sns
 import streamlit as st
 from babel.numbers import format_number
 
+# Di bagian atas file dashboard.py, setelah imports dan sebelum konfigurasi visual:
+
+# ====================
+# PENJELASAN SISTEM
+# ====================
+st.title('Bike Sharing Analytics 🚲')
+
+st.markdown("""
+**Sistem berbagi sepeda modern** menghadirkan solusi transportasi urban yang fleksibel dan ramah lingkungan. 
+Dashboard ini menganalisis data penyewaan sepeda dari Capital Bikeshare Washington D.C. (2011-2012) untuk 
+memahami pola penggunaan melalui berbagai faktor:
+""")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown("""
+    🕒 **Temporal**  
+    - Pola harian/mingguan  
+    - Pengaruh musiman  
+    - Tren tahunan
+    """)
+    
+with col2:
+    st.markdown("""
+    🌦️ **Lingkungan**  
+    - Kondisi cuaca  
+    - Suhu & kelembaban  
+    - Kecepatan angin
+    """)
+    
+with col3:
+    st.markdown("""
+    🏙️ **Operasional**  
+    - Weekday vs Weekend  
+    - Hari libur  
+    - Jam sibuk
+    """)
+
+st.markdown("""
+Data ini tidak hanya bermanfaat untuk manajemen operasional, tetapi juga berfungsi sebagai *sensor virtual* 
+untuk memahami mobilitas urban. Setiap penyewaan merepresentasikan pergerakan warga kota yang dipengaruhi 
+oleh berbagai faktor eksternal.
+""")
+
+st.markdown("---")  # Garis pemisah sebelum filter
+
 # ====================
 # KONFIGURASI VISUAL
 # ====================
@@ -109,7 +155,7 @@ else:
     # ====================
     # DASHBOARD LAYOUT
     # ====================
-    st.title('Bike Sharing Analytics 🚲')
+    st.title('Dashboard Bike Sharing 🚲')
     st.markdown("""
     Dashboard ini menampilkan analisis pola penyewaan sepeda berdasarkan berbagai faktor seperti musim, 
     cuaca, dan jenis hari. Gunakan filter di sidebar untuk menyesuaikan tampilan data.
@@ -468,7 +514,7 @@ else:
                         item_idx = row_idx * 3 + col_idx
                         if item_idx < len(records_list):
                             idx, row = records_list[item_idx]
-                            st.caption(
+                            st.markdown(
                                 f"**{row['dteday'].strftime('%d %b %Y')} {int(row['hr']):02d}:00**  \n"
                                 f"• {row['season_label']}  \n"
                                 f"• {row['weather_label']}  \n"
