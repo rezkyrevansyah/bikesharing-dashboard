@@ -55,7 +55,7 @@ with st.sidebar:
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.image("https://camo.githubusercontent.com/e7e99e60ef795eb3ae37545e6a1f84391d462097d74c69d378daaab5660ed444/687474703a2f2f6369747962696b2e65732f66696c65732f707962696b65732e706e67", 
-                 width=300)
+                 width=150)
     
     st.header("Filter Data")
     
